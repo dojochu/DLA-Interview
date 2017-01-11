@@ -1,0 +1,29 @@
+{
+  "mainFile": "music_tagger.py", 
+  "use-tabs": false, 
+  "venv": "/home/ubuntu/dla/bin/python3.5", 
+  "relatedProjects": [], 
+  "name": "DLA", 
+  "license": "GNU General Public License v3", 
+  "url": "", 
+  "pythonPath": "/home/ubuntu/dla/bin/python3.5", 
+  "preExecScript": "", 
+  "additional_builtins": [], 
+  "programParams": "", 
+  "indentation": 4, 
+  "PYTHONPATH": "/home/ubuntu/dla/bin", 
+  "supported-extensions": [
+    ".py", 
+    ".html", 
+    ".jpg", 
+    ".png", 
+    ".ui", 
+    ".css", 
+    ".json", 
+    ".js", 
+    ".ini"
+  ], 
+  "project-type": "", 
+  "postExecScript": "", 
+  "description": "DLA Interview Project. Music genre tagger using RNN."
+}
