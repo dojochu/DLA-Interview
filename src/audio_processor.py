@@ -1,50 +1,103 @@
-# From keunwoochoi: https://github.com/keunwoochoi/music-auto_tagging-keras/blob/master/audio_processor.py
+# compute_melgram credit to https://github.com/keunwoochoi/music-auto_tagging-keras/blob/master/audio_processor.py
 
 import librosa
 import numpy as np
 import pandas as pd
 
-d_path = '/media/ubuntu/9C33-6BBD/mp3/'
+d_path = '/media/ubuntu/9C33-6BBD/'
 l_file = '/media/ubuntu/9C33-6BBD/annotations_final.csv'
 m_file = '/media/ubuntu/9C33-6BBD/clip_info_final.csv'
 
-mel_bins = 96
-frames = 1366
+#Some default parameters
+n_mels = 96
+sr = 12000
+n_fft = 512
+hop_len = 256
+dura = 29.12
 n_labels = 188
 
-def create_batch_from_id(bid, first_num, N_MELS=mel_bins, FRAME_SIZE=frames, NUM_LABELS=n_labels, data_path=d_path, label_file=l_file, metadata_file=m_file):
-   
-    clip_info = pd.read_csv(filepath_or_buffer=metadata_file, delimiter='\t')
-    label_info = pd.read_csv(filepath_or_buffer=label_file, delimiter= '\t')
-    clip_info['batch_id'] = pd.Series([str(b)[2] for b in clip_info.mp3_path.str.split('/')])
-    label_info['batch_id'] = pd.Series([str(b)[2] for b in label_info.mp3_path.str.split('/')])
+#Reading in metadata and label data
+clip_info = pd.read_csv(filepath_or_buffer=m_file, delimiter='\t')
+clip_info['batch_id'] = pd.Series([str(b)[2] for b in clip_info.mp3_path.str.split('/')])
+label_info = pd.read_csv(filepath_or_buffer=l_file, delimiter='\t')
 
-    print('Creating data on batch_id = ' + bid + '- begins')
-    melgrams = np.zeros(shape=(1, 1, N_MELS, FRAME_SIZE,))
+
+def get_clips_from_id(data_ids):
+    '''
+    Function: get clip_ids based on batch ids
+
+    Arguments
+
+        data_id: ids from the batch data (f,e,d,c,0,1,2,3,4,5,6,7,8,9)
+
+    Return: Pandas dataframe of clip_ids
+
+    '''
+    return clip_info[clip_info['batch_id'].isin(data_ids)]['clip_id']
+
+
+def get_clips_from_label(label):
+
+    '''
+    Function: get clip_ids based on labels
+
+    Arguments
+
+        label: music class category
+
+    Return Pandas dataframe of clip_ids
+    '''
+
+    return label_info[label_info[label] == 1]['clip_id']
+
+
+def create_batch_from_id(clips, np_cache=True, N_MELS=n_mels, N_FFT=n_fft, HOP_LEN=hop_len, DURA=dura, SR=sr, NUM_LABELS=n_labels, data_path=d_path, label_file=l_file, metadata_file=m_file):
+
+    '''
+    Function: Get Mel-Spectrogram and label data
+
+    Arguments
+
+        clips: from get get_clip functions
+        np_cache: Use mp3 data that was cached so you don't have to run the mel-spectrogram calcultions again
+
+    Return: Numpy ndarray Mel-spectrogram, Numpy ndarray Label
+
+    '''
+
+    melgrams = np.zeros(shape=(1, 1, N_MELS, int(DURA * SR / HOP_LEN + 1),))
     labels = np.zeros(shape=(NUM_LABELS,))
-    song_list = clip_info[clip_info['batch_id'] == bid]['mp3_path']
-    
-    if first_num is None:
-        first_num = song_list.shape[0]
+    song_list = clip_info[clip_info['clip_id'].isin(clips)]['mp3_path']
+
     num_song = 0
-    for song in song_list.iloc[:first_num]:
+    for song in song_list:
         try:
             num_song += 1
-            print('Reading song number: ' + str(num_song))
-            melgrams = np.concatenate((melgrams, compute_melgram(data_path + song)))
-            labels = np.vstack((labels, label_info[label_info['mp3_path'] == song].filter(items=label_info.columns.tolist()[1:-2]).transpose().iloc[:,0]))
-        except FileNotFoundError:
-            print('File '+ song + 'not found. Song will be skipped')
+            if np_cache:
+                melgrams = np.concatenate((melgrams, np.load(data_path + 'npy/' + song.split('.')[0] + '.npy')))
+                labels = np.vstack((labels, np.load(data_path + 'npy/' + song.split('.')[0] + '_label.npy')))
+
+            else:
+                melgrams = np.concatenate((melgrams, compute_melgram(data_path + 'mp3/' + song, SR=SR, N_FFT=N_FFT, N_MELS=N_MELS, HOP_LEN=HOP_LEN, DURA=DURA)))
+                labels = np.vstack((labels, label_info[label_info['mp3_path'] == song].filter(items=label_info.columns.tolist()[1:-1]).transpose().iloc[:, 0]))
+        except:
+            print('song ' + song + 'caused an error')
             continue
     return melgrams[1:], labels[1:]
 
-def compute_melgram(audio_path, SR=12000, N_FFT=512, N_MELS=96, HOP_LEN=256, DURA=29.12):
+
+def compute_melgram(audio_path, SR=sr, N_FFT=n_fft, N_MELS=n_mels, HOP_LEN=hop_len, DURA=dura):
 
     '''
-    Compute a mel-spectrogram and returns it in a shape of (1,1,96,1366),
-    where 96 == #mel-bins and 1366 == #time frame
-    parameters
-    Any format supported by audioread will work.
+    Author: Keun Woo Choi
+
+    Function: compute Mel-spectrogram
+
+    Arguments:
+        audio_path: path of audio file
+
+    Return: Numpy ndarray of Mel-spectrogram
+
     '''
     src, sr = librosa.load(audio_path, sr=SR)  # whole signal
     n_sample = src.shape[0]

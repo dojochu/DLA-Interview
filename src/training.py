@@ -1,61 +1,132 @@
-from keras.layers import Input, Dense
+from keras.layers import Input, Dense, Convolution2D, MaxPooling2D, Flatten
 from keras.models import Model
-from audio_processor import compute_melgram
-import pandas as pd
+from audio_processor import create_batch_from_id, get_clips_from_id
 import numpy as np
+import sys
 
-data_path = '../music_samples/MoShang BEATS/'
-label_path = '../music_samples/annotations_final.csv'
-info_path = '../music_samples/clip_info_final.csv'
+output_path = '/home/ubuntu/dla/DLA/saved_model/'
+data_ids = ['9', '8', '7', '6', '4', '3', '2', '1', '0']
+clip_train = get_clips_from_id(data_ids)
 
-songs = ['90_B04.mp3', '90_M03.mp3', '90_M07.mp3', '90_M10.mp3']
 
-clip_info = pd.read_csv(filepath_or_buffer=info_path, delimiter='\t')
-label_info = pd.read_csv(filepath_or_buffer=label_path, delimiter='\t')
-clip_info['batch_id'] = pd.Series([str(b)[2] for b in clip_info.mp3_path.str.split('/')])
-label_info['batch_id'] = pd.Series([str(b)[2] for b in label_info.mp3_path.str.split('/')])
+'''
+CONSTANTS
+SR = Sample Rate
+N_FFT = Length of segment for Short-Time Fourier Transform
+N_MELS = Frequency bin scale
+HOP_LEN = Hop length
+DURA = Duration
+FRAME_SIZE = Data vector size
+NUM_LABELS = Number of categories
+TEST_SIZE = Test dataset size
+BATCH_SIZE = batch size
+'''
 
 SR = 12000
 N_FFT = 512
 N_MELS = 96
 HOP_LEN = 256
-DURA = 29.12  # to make it 1366 frame..
-FRAME_SIZE = int(N_MELS * (DURA * SR / HOP_LEN + 1))
+DURA = 29.12
+FRAME_SIZE = int(DURA * SR / HOP_LEN + 1)
 NUM_LABELS = 188
 TEST_SIZE = 2000
-iterations = 1000
+BATCH_SIZE = int(sys.argv[1])
+
+'''
+Input Tensor - Using the Mel-Spectrogram of the .wav audio file to create a N_MELS x FRAME_SIZE feature matrix.
+input shape: (samples, channels, mel-bins, framesize) = (1, 1, N_MELS, FRAME_SIZE).
+'''
+print('Defining input vector...')
+model_input = Input(shape=(1, N_MELS, FRAME_SIZE), name='initial_input', dtype='float32')
 
 
-#model_input = tf.placeholder(dtype='float32', shape=(FRAME_SIZE, 1))
-model_input = Input(shape=(FRAME_SIZE,))
-#truth = tf.placeholder(dtype='float32', shape=(NUM_LABELS, 1))
-m = Dense(50, activation='softmax')(model_input)
-m = Dense(50, activation='softmax')(m)
-model_output = Dense(NUM_LABELS, activation='softmax')(m)
+'''
+Building the architecture of the Convolutional 2-dimensional neural network
+'''
 
+print('Defining Deep Learning Model...')
+layer1 = Convolution2D(nb_filter=32, nb_row=3, nb_col=3,
+                      init='glorot_normal', activation='relu', border_mode='same')
+layer2 = Convolution2D(nb_filter=64, nb_row=3, nb_col=3,
+                       init='glorot_normal', activation='relu', border_mode='same')
+layer3 = MaxPooling2D(pool_size=(2, 2), border_mode='valid')
+layer4 = Convolution2D(nb_filter=32, nb_row=3, nb_col=3,
+                       init='glorot_normal', activation='relu', border_mode='same')
+layer5 = MaxPooling2D(pool_size=(2, 2), border_mode='valid')
+layer6 = Convolution2D(nb_filter=16, nb_row=3, nb_col=3,
+                       init='glorot_normal', activation='relu', border_mode='same')
+layer7 = MaxPooling2D(pool_size=(2, 2), border_mode='valid')
+layer8 = Convolution2D(nb_filter=8, nb_row=3, nb_col=3,
+                       init='glorot_normal', activation='relu', border_mode='same')
+layer9 = MaxPooling2D(pool_size=(2, 2), border_mode='valid')
+layer10 = Convolution2D(nb_filter=8, nb_row=3, nb_col=3,
+                       init='glorot_normal', activation='relu', border_mode='same')
+layer11 = MaxPooling2D(pool_size=(4, 4), border_mode='valid')
+layer12 = Flatten()
+layer13 = Dense(output_dim=NUM_LABELS, activation='softmax')
+
+x = layer1(model_input)
+x = layer2(x)
+x = layer3(x)
+x = layer4(x)
+x = layer5(x)
+x = layer6(x)
+x = layer7(x)
+x = layer8(x)
+x = layer9(x)
+x = layer10(x)
+x = layer11(x)
+x = layer12(x)
+x = layer13(x)
+model_output = x
+
+print(layer1.input_shape)
+print(layer1.output_shape)
+print(layer2.output_shape)
+print(layer3.output_shape)
+print(layer4.output_shape)
+print(layer5.output_shape)
+print(layer7.output_shape)
+print(layer6.output_shape)
+print(layer7.output_shape)
+print(layer8.output_shape)
+print(layer9.output_shape)
+print(layer10.output_shape)
+print(layer11.output_shape)
+
+print('Compiling model...')
 model = Model(input=model_input, output=model_output)
-model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+model.compile(optimizer='Adadelta', loss='categorical_crossentropy', metrics=['categorical_crossentropy', 'cosine_proximity'])
 
 
-for bid in pd.unique(clip_info.batch_id):
-    melgrams = np.zeros(shape=(FRAME_SIZE,))
-    print(melgrams)
-    labels = np.zeros(shape=(NUM_LABELS,))
-    #for song in clip_info[clip_info['batch_id'] == bid]['mp3_path']:
-    for song in songs:
-        melgrams = np.vstack((melgrams, compute_melgram(data_path + song).flatten()))
-        #melgrams = compute_melgram(data_path + song).transpose().flatten()
-        #print(melgrams.shape)
-        #print(model_input)
-        #labels = np.concatenate(labels, label_info[label_info['mp3_path'] == song].filter(
-        #                      items=label_info.columns.tolist()[1:-1]).transpose())
-        labels = np.vstack((labels, np.zeros(shape=(NUM_LABELS,))))
-        #labels = np.zeros(shape=(NUM_LABELS,))
+'''
+Run each training/gradient step on small batch of data
+
+'''
+
+total_songs = 0
+total_batch = 0
+
+SAMPLE_SIZE = clip_train.shape[0]
+print('SAMPLE_SIZE: ' + str(SAMPLE_SIZE))
+print('Beginning training...')
+
+for batch in [np.arange(0, SAMPLE_SIZE, 1)[a:b] for a, b in zip(np.arange(0, SAMPLE_SIZE, BATCH_SIZE), np.arange(BATCH_SIZE, SAMPLE_SIZE + BATCH_SIZE, BATCH_SIZE))]:
+
+    try:
+        melgrams, labels = create_batch_from_id(clips=clip_train.iloc[batch], np_cache=True, N_MELS=N_MELS, SR=SR, N_FFT=N_FFT, HOP_LEN=HOP_LEN, DURA=DURA)
+        total_batch += 1
+        total_songs += melgrams.shape[0]
+        print('Training on batch number: ' + str(total_batch))
+        print('Training on ' + str(melgrams.shape[0]) + ' songs')
+        print('Total songs: ' + str(total_songs))
         model.train_on_batch(melgrams, labels)
+    except Exception as e:
+        print('Error occured: batch ' + str(total_batch) + ' skipped')
+        continue
 
-test_x = np.vstack((np.zeros(shape=(FRAME_SIZE,)), compute_melgram(data_path + songs[0]).flatten()))
-test_y = np.vstack((np.zeros(shape=(NUM_LABELS,)),np.ones(shape=(NUM_LABELS,))))
-loss_and_metrics = model.evaluate(test_x, test_y)
+print('')
+model.save(output_path + 'CNN3.h5')
+print('Total Songs Trained: ' + str(total_songs))
+print('Total Batches Trained: ' + str(total_batch))
 
-
-print(loss_and_metrics)

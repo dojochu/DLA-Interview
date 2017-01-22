@@ -1,0 +1,29 @@
+import training2 as t2
+import importlib
+importlib.reload(t2)
+t2
+t2.model
+t2.melgrams
+t2.labels
+t2.melgrams.shape
+t2.labels.shape
+t2.melgrams[0:2]
+t2.melgrams[0:2].shape
+t2.labels[0:2].shape
+testx = np.random.normal((3,3)
+)
+import numpy as np
+testx = np.random.normal((3,3))
+testx
+testx = np.random.normal(shape=(3,3)
+)
+import readline
+readline.write_history_file('/home/ubuntu/dla/pysess')
+ks
+readline.write_history_file('/home/ubuntu/dla/pysess')
+%store
+%store magic
+model
+t2.model
+t2.model.save('/home/ubuntu/dla/DLA/output')
+readline.write_history_file('/home/ubuntu/dla/DLA/pysess/history')
