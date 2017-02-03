@@ -2,7 +2,6 @@
 ##Author 
 * Name: Stephanie Kao
 * Email: stephanie.kao5@gmail.com
-* Phone: 775-544-9655
 
 This README describes the development of an automated music genre tagger - a machine learning model that uses deep neural networks to categorize audio signals from a music file into one or more musical genre. This project focuses on deep learning architectures and analyzing/visualizing the results for improvements. The hope is to provide insight into the data patterns of audio signals and its association with genre. To access this README in more readable form, type the following in the terminal:
 
