@@ -1,4 +1,4 @@
-# DLA Interview Project
+# Music Tagger Project
 ##Author 
 * Name: Stephanie Kao
 * Email: stephanie.kao5@gmail.com
